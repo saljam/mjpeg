@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // Stream represents a single video feed.
@@ -17,6 +18,7 @@ type Stream struct {
 	m     map[chan []byte]bool
 	frame []byte
 	lock  sync.Mutex
+	FrameInterval time.Duration
 }
 
 const boundaryWord = "MJPEGBOUNDARY"
@@ -37,6 +39,7 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.lock.Unlock()
 
 	for {
+		time.Sleep(s.FrameInterval)
 		b := <-c
 		_, err := w.Write(b)
 		if err != nil {
@@ -61,7 +64,12 @@ func (s *Stream) UpdateJPEG(jpeg []byte) {
 
 	s.lock.Lock()
 	for c := range s.m {
-		c <- s.frame
+		// Select to skip streams which are sleeping to drop frames.
+		// This might need more thought.
+		select {
+		case c <- s.frame:
+		default:
+		}
 	}
 	s.lock.Unlock()
 }
@@ -71,5 +79,6 @@ func NewStream() *Stream {
 	return &Stream{
 		m:     make(map[chan []byte]bool),
 		frame: make([]byte, len(headerf)),
+		FrameInterval: 50 * time.Millisecond,
 	}
 }
