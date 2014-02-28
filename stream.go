@@ -8,6 +8,7 @@ package mjpeg
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -15,9 +16,9 @@ import (
 
 // Stream represents a single video feed.
 type Stream struct {
-	m     map[chan []byte]bool
-	frame []byte
-	lock  sync.Mutex
+	m             map[chan []byte]bool
+	frame         []byte
+	lock          sync.Mutex
 	FrameInterval time.Duration
 }
 
@@ -31,6 +32,7 @@ const headerf = "\r\n" +
 
 // ServeHTTP responds to HTTP requests with the MJPEG stream, implementing the http.Handler interface.
 func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Println("Stream:", r.RemoteAddr, "connected")
 	w.Header().Add("Content-Type", "multipart/x-mixed-replace;boundary="+boundaryWord)
 
 	c := make(chan []byte)
@@ -50,6 +52,7 @@ func (s *Stream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.lock.Lock()
 	delete(s.m, c)
 	s.lock.Unlock()
+	log.Println("Stream:", r.RemoteAddr, "disconnected")
 }
 
 // UpdateJPEG pushes a new JPEG frame onto the clients.
@@ -77,8 +80,8 @@ func (s *Stream) UpdateJPEG(jpeg []byte) {
 // NewStream initializes and returns a new Stream.
 func NewStream() *Stream {
 	return &Stream{
-		m:     make(map[chan []byte]bool),
-		frame: make([]byte, len(headerf)),
+		m:             make(map[chan []byte]bool),
+		frame:         make([]byte, len(headerf)),
 		FrameInterval: 50 * time.Millisecond,
 	}
 }
