@@ -16,7 +16,7 @@ import (
 type Stream struct {
 	m     map[chan []byte]bool
 	frame []byte
-	lock sync.Mutex
+	lock  sync.Mutex
 }
 
 const boundaryWord = "MJPEGBOUNDARY"
